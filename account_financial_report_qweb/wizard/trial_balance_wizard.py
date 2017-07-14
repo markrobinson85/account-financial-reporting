@@ -29,7 +29,7 @@ class TrialBalanceReportWizard(models.TransientModel):
                                     ('all', 'All Entries')],
                                    string='Target Moves',
                                    required=True,
-                                   default='all')
+                                   default='posted')
     account_ids = fields.Many2many(
         comodel_name='account.account',
         string='Filter accounts',
