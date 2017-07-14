@@ -7,6 +7,8 @@ from . import abstract_report_xlsx
 from openerp.report import report_sxw
 from openerp import _
 
+class Object(object):
+    pass
 
 class TrialBalanceXslx(abstract_report_xlsx.AbstractReportXslx):
 
@@ -84,11 +86,20 @@ class TrialBalanceXslx(abstract_report_xlsx.AbstractReportXslx):
             # Display array header for account lines
             self.write_array_header()
 
+        totals = Object()
+        totals.name = 'TOTAL'
+        totals.code = ''
+        totals.debit = 0.0
+        totals.credit = 0.0
+        totals.initial_balance = ''
+        totals.final_balance = ''
         # For each account
         for account in report.account_ids:
             if not report.show_partner_details:
                 # Display account lines
                 self.write_line(account)
+                totals.debit += round(account.debit, 2)
+                totals.credit += round(account.credit, 2)
 
             else:
                 # Write account title
@@ -108,6 +119,9 @@ class TrialBalanceXslx(abstract_report_xlsx.AbstractReportXslx):
 
                 # Line break
                 self.row_pos += 2
+
+        self.write_line(totals)
+
 
     def write_account_footer(self, account, name_value):
         """Specific function to write account footer for Trial Balance"""
