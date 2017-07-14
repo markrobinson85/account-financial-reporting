@@ -4,7 +4,7 @@
     <menuitem
         parent="account.menu_finance_reports"
         id="menu_oca_reports"
-        name="OCA accounting reports"
+        name="Accounting Reports"
         groups="account.group_account_manager,account.group_account_user"
         />
 
