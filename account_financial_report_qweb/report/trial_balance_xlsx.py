@@ -91,8 +91,8 @@ class TrialBalanceXslx(abstract_report_xlsx.AbstractReportXslx):
         totals.code = ''
         totals.debit = 0.0
         totals.credit = 0.0
-        totals.initial_balance = ''
-        totals.final_balance = ''
+        totals.initial_balance = 0.0
+        totals.final_balance = 0.0
         # For each account
         for account in report.account_ids:
             if not report.show_partner_details:
