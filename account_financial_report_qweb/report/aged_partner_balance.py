@@ -96,6 +96,7 @@ class AgedPartnerBalanceReportPartner(models.TransientModel):
         'res.partner',
         index=True
     )
+    currency_id = fields.Many2one('res.currency', index=True)
 
     # Data fields, used for report display
     name = fields.Char()
@@ -134,6 +135,7 @@ class AgedPartnerBalanceReportLine(models.TransientModel):
         ondelete='cascade',
         index=True
     )
+    currency_id = fields.Many2one('res.currency', index=True)
 
     # Data fields, used for report display
     partner = fields.Char()
@@ -158,6 +160,7 @@ class AgedPartnerBalanceReportMoveLine(models.TransientModel):
 
     # Data fields, used to keep link with real object
     move_line_id = fields.Many2one('account.move.line')
+    currency_id = fields.Many2one('res.currency', index=True)
 
     # Data fields, used for report display
     date = fields.Date()
@@ -271,14 +274,16 @@ INSERT INTO
     create_uid,
     create_date,
     partner_id,
-    name
+    name,
+    currency_id
     )
 SELECT
     ra.id AS report_account_id,
     %s AS create_uid,
     NOW() AS create_date,
     rpo.partner_id,
-    rpo.name
+    rpo.name,
+    rpo.currency_id
 FROM
     report_open_items_qweb_partner rpo
 INNER JOIN
@@ -327,7 +332,8 @@ INSERT INTO
         age_60_days,
         age_90_days,
         age_120_days,
-        older
+        older,
+        currency_id
     )
 SELECT
     rp.id AS report_partner_id,
@@ -378,7 +384,8 @@ SELECT
             WHEN rlo.date_due <= date_range.date_older
             THEN rlo.amount_residual
         END
-    ) AS older
+    ) AS older,
+    rp.currency_id
 FROM
     date_range,
     report_open_items_qweb_move_line rlo
@@ -395,7 +402,7 @@ INNER JOIN
         """
         if not only_empty_partner_line:
             query_inject_line += """
-        AND rpo.partner_id = rp.partner_id
+        AND rpo.partner_id = rp.partner_id AND rpo.currency_id = rp.currency_id
             """
         elif only_empty_partner_line:
             query_inject_line += """
@@ -407,7 +414,8 @@ WHERE
     rao.report_id = %s
 AND ra.report_id = %s
 GROUP BY
-    rp.id
+    rp.id,
+    rp.currency_id
         """
         query_inject_line_params = (self.date_at,) * 6
         query_inject_line_params += (
@@ -454,7 +462,8 @@ INSERT INTO
         age_60_days,
         age_90_days,
         age_120_days,
-        older
+        older,
+        currency_id
     )
 SELECT
     rp.id AS report_partner_id,
@@ -499,7 +508,8 @@ SELECT
     CASE
         WHEN rlo.date_due <= date_range.date_older
         THEN rlo.amount_residual
-    END AS older
+    END AS older,
+    rp.currency_id
 FROM
     date_range,
     report_open_items_qweb_move_line rlo
@@ -516,7 +526,7 @@ INNER JOIN
         """
         if not only_empty_partner_line:
             query_inject_move_line += """
-        AND rpo.partner_id = rp.partner_id
+        AND rpo.partner_id = rp.partner_id and rpo.currency_id = rp.currency_id
             """
         elif only_empty_partner_line:
             query_inject_move_line += """
@@ -553,19 +563,22 @@ WITH
                 SUM(rl.age_60_days) AS cumul_age_60_days,
                 SUM(rl.age_90_days) AS cumul_age_90_days,
                 SUM(rl.age_120_days) AS cumul_age_120_days,
-                SUM(rl.older) AS cumul_older
+                SUM(rl.older) AS cumul_older,
+                rp.currency_id
             FROM
                 report_aged_partner_balance_qweb_line rl
             INNER JOIN
                 report_aged_partner_balance_qweb_partner rp
                     ON rl.report_partner_id = rp.id
+                    AND rl.currency_id = rp.currency_id 
             INNER JOIN
                 report_aged_partner_balance_qweb_account ra
                     ON rp.report_account_id = ra.id
             WHERE
                 ra.report_id = %s
             GROUP BY
-                ra.id
+                ra.id,
+                rp.currency_id
         )
 UPDATE
     report_aged_partner_balance_qweb_account

@@ -80,6 +80,7 @@ class OpenItemsReportPartner(models.TransientModel):
         'res.partner',
         index=True
     )
+    currency_id = fields.Many2one('res.currency', index=True)
 
     # Data fields, used for report display
     name = fields.Char()
@@ -117,6 +118,8 @@ class OpenItemsReportMoveLine(models.TransientModel):
 
     # Data fields, used to keep link with real object
     move_line_id = fields.Many2one('account.move.line')
+
+    currency_id = fields.Many2one('res.currency', index=True)
 
     # Data fields, used for report display
     date = fields.Date()
@@ -281,7 +284,8 @@ WITH
                         ELSE p.name
                     END,
                     '""" + _('No partner allocated') + """'
-                ) AS partner_name
+                ) AS partner_name,
+                COALESCE(ml.currency_id, ml.company_currency_id) as currency_id
             FROM
                 report_open_items_qweb_account ra
             INNER JOIN
@@ -310,6 +314,8 @@ WITH
         query_inject_partner += """
             GROUP BY
                 ra.id,
+                ml.currency_id,
+		        ml.company_currency_id,
                 a.id,
                 p.id,
                 at.include_initial_balance
@@ -321,14 +327,16 @@ INSERT INTO
     create_uid,
     create_date,
     partner_id,
-    name
+    name,
+    currency_id
     )
 SELECT
     ap.report_account_id,
     %s AS create_uid,
     NOW() AS create_date,
     ap.partner_id,
-    ap.partner_name
+    ap.partner_name,
+    ap.currency_id
 FROM
     accounts_partners ap
         """
@@ -367,7 +375,8 @@ FROM
                         THEN pr.amount_currency
                         ELSE NULL
                     END
-                ) AS partial_amount_currency
+                ) AS partial_amount_currency,
+                COALESCE(ml.currency_id, ml.company_currency_id) as currency_id
             FROM
                 report_open_items_qweb_partner rp
             INNER JOIN
@@ -380,6 +389,7 @@ FROM
         if not only_empty_partner_line:
             sub_query += """
                     AND rp.partner_id = ml.partner_id
+                    AND rp.currency_id = COALESCE(ml.currency_id, ml.company_currency_id)
             """
         elif only_empty_partner_line:
             sub_query += """
@@ -475,13 +485,15 @@ WITH
                             ELSE amount_currency + SUM(partial_amount_currency)
                         END
                     ELSE amount_currency
-                END AS amount_residual_currency
+                END AS amount_residual_currency,
+                currency_id
             FROM
                 move_lines_amount
             GROUP BY
                 id,
                 balance,
-                amount_currency
+                amount_currency,
+                currency_id
         )
 INSERT INTO
     report_open_items_qweb_move_line
@@ -501,7 +513,8 @@ INSERT INTO
     amount_residual,
     currency_name,
     amount_total_due_currency,
-    amount_residual_currency
+    amount_residual_currency,
+    currency_id
     )
 SELECT
     rp.id AS report_partner_id,
@@ -534,7 +547,8 @@ SELECT
     ml2.amount_residual,
     c.name AS currency_name,
     ml.amount_currency,
-    ml2.amount_residual_currency
+    ml2.amount_residual_currency,
+    ml2.currency_id
 FROM
     report_open_items_qweb_partner rp
 INNER JOIN
@@ -546,6 +560,7 @@ INNER JOIN
         ON ml.id = ml2.id
         AND ml2.amount_residual IS NOT NULL
         AND ml2.amount_residual != 0
+        AND ml2.currency_id = rp.currency_id
 INNER JOIN
     account_move m ON ml.move_id = m.id
 INNER JOIN
