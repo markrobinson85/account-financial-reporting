@@ -54,7 +54,6 @@ class GeneralLedgerReportWizard(models.TransientModel):
         comodel_name='account.analytic.account',
         string='Filter cost centers',
     )
-
     not_only_one_unaffected_earnings_account = fields.Boolean(
         readonly=True,
         string='Not only one unaffected earnings account'
@@ -134,3 +133,4 @@ class GeneralLedgerReportWizard(models.TransientModel):
         model = self.env['report_general_ledger_qweb']
         report = model.create(self._prepare_report_general_ledger())
         return report.print_report(xlsx_report)
+

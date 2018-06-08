@@ -73,7 +73,8 @@ class OpenItemsXslx(abstract_report_xlsx.AbstractReportXslx):
         # For each account
         for account in report.account_ids:
             # Write account title
-            self.write_array_title(account.code + ' - ' + account.name)
+            # self.write_array_title(account.code + ' - ' + account.name)
+            self.write_array_title(account.code + ' - ' + account.name + ' - ' + account.currency_id.name)
 
             # For each partner
             for partner in account.partner_ids:

@@ -121,6 +121,7 @@ class AgedPartnerBalanceXslx(abstract_report_xlsx.AbstractReportXslx):
                      'field_final_balance': 'older',
                      'type': 'amount',
                      'width': 14},
+                14: {'header': _('Currency'), 'field': 'currency_id', 'type': 'amount', 'width': 9},
             }
 
     def _get_report_filters(self, report):
@@ -151,7 +152,7 @@ class AgedPartnerBalanceXslx(abstract_report_xlsx.AbstractReportXslx):
             # For each account
             for account in report.account_ids:
                 # Write account title
-                self.write_array_title(account.code + ' - ' + account.name)
+                self.write_array_title(account.code + ' - ' + account.name + ' - ' + account.currency_id.name)
 
                 # Display array header for partners lines
                 self.write_array_header()

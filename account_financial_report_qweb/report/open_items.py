@@ -52,6 +52,7 @@ class OpenItemsReportAccount(models.TransientModel):
         'account.account',
         index=True
     )
+    currency_id = fields.Many2one('res.currency', index=True)
 
     # Data fields, used for report display
     code = fields.Char()
@@ -185,7 +186,8 @@ WITH
                 a.id,
                 a.code,
                 a.name,
-                a.user_type_id
+                a.user_type_id,
+                COALESCE(ml.currency_id, ml.company_currency_id) as currency_id
             FROM
                 account_account a
             INNER JOIN
@@ -218,7 +220,9 @@ WITH
             """
         query_inject_account += """
             GROUP BY
-                a.id
+                a.id,
+                ml.currency_id,
+                ml.company_currency_id
         )
 INSERT INTO
     report_open_items_qweb_account
@@ -228,7 +232,8 @@ INSERT INTO
     create_date,
     account_id,
     code,
-    name
+    name,
+    currency_id
     )
 SELECT
     %s AS report_id,
@@ -236,7 +241,8 @@ SELECT
     NOW() AS create_date,
     a.id AS account_id,
     a.code,
-    COALESCE(tr.value, a.name) AS name
+    COALESCE(tr.value, a.name) AS name,
+    a.currency_id
 FROM
     accounts a
 LEFT JOIN
@@ -285,7 +291,7 @@ WITH
                     END,
                     '""" + _('No partner allocated') + """'
                 ) AS partner_name,
-                COALESCE(ml.currency_id, ml.company_currency_id) as currency_id
+                ra.currency_id --COALESCE(ml.currency_id, ml.company_currency_id) as currency_id
             FROM
                 report_open_items_qweb_account ra
             INNER JOIN
@@ -314,8 +320,9 @@ WITH
         query_inject_partner += """
             GROUP BY
                 ra.id,
-                ml.currency_id,
-		        ml.company_currency_id,
+                ra.currency_id,
+                --ml.currency_id,
+		        --ml.company_currency_id,
                 a.id,
                 p.id,
                 at.include_initial_balance

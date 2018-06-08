@@ -55,6 +55,8 @@ class AgedPartnerBalanceReportAccount(models.TransientModel):
         index=True
     )
 
+    currency_id = fields.Many2one('res.currency', index=True)
+
     # Data fields, used for report display
     code = fields.Char()
     name = fields.Char()
@@ -243,7 +245,8 @@ INSERT INTO
     create_date,
     account_id,
     code,
-    name
+    name,
+    currency_id
     )
 SELECT
     %s AS report_id,
@@ -251,7 +254,8 @@ SELECT
     NOW() AS create_date,
     rao.account_id,
     rao.code,
-    rao.name
+    rao.name,
+    rao.currency_id
 FROM
     report_open_items_qweb_account rao
 WHERE
@@ -289,7 +293,7 @@ FROM
 INNER JOIN
     report_open_items_qweb_account rao ON rpo.report_account_id = rao.id
 INNER JOIN
-    report_aged_partner_balance_qweb_account ra ON rao.code = ra.code
+    report_aged_partner_balance_qweb_account ra ON rao.code = ra.code AND ra.currency_id = rao.currency_id
 WHERE
     rao.report_id = %s
 AND ra.report_id = %s
@@ -392,7 +396,7 @@ FROM
 INNER JOIN
     report_open_items_qweb_partner rpo ON rlo.report_partner_id = rpo.id
 INNER JOIN
-    report_open_items_qweb_account rao ON rpo.report_account_id = rao.id
+    report_open_items_qweb_account rao ON rpo.report_account_id = rao.id AND rpo.currency_id = rao.currency_id
 INNER JOIN
     report_aged_partner_balance_qweb_account ra ON rao.code = ra.code
 INNER JOIN
@@ -516,9 +520,9 @@ FROM
 INNER JOIN
     report_open_items_qweb_partner rpo ON rlo.report_partner_id = rpo.id
 INNER JOIN
-    report_open_items_qweb_account rao ON rpo.report_account_id = rao.id
+    report_open_items_qweb_account rao ON rpo.report_account_id = rao.id --AND rlo.currency_id = rao.currency_id
 INNER JOIN
-    report_aged_partner_balance_qweb_account ra ON rao.code = ra.code
+    report_aged_partner_balance_qweb_account ra ON rao.code = ra.code AND rlo.currency_id = rao.currency_id
 INNER JOIN
     report_aged_partner_balance_qweb_partner rp
         ON
