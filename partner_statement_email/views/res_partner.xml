@@ -9,7 +9,7 @@
             <field name="arch" type="xml">
                 <sheet position="before">
                     <header>
-                        <button name="action_partner_statement_send" string="E-mail Statement" type="object" class="oe_highlight"/>
+                        <button name="action_partner_statement_send" string="Send Statement" type="object" class="oe_highlight" />
                     </header>
                 </sheet>
             </field>

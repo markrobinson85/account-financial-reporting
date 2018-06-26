@@ -94,53 +94,15 @@ class MailComposer(models.TransientModel):
             [result.pop(field, None) for field in result.keys() if field not in fields]
         return result
 
-    # @api.model
-    # def _get_composition_mode_selection(self):
-    #     return [('comment', 'Post on a document'),
-    #             ('mass_mail', 'Email Mass Mailing'),
-    #             ('mass_post', 'Post on Multiple Documents')]
-
-    # composition_mode = fields.Selection(selection=_get_composition_mode_selection, string='Composition mode', default='comment')
     partner_ids = fields.Many2many(
         'res.partner', 'mail_compose_message_statement_res_partner_rel',
         'wizard_id', 'partner_id', 'Additional Contacts')
-
-    # use_active_domain = fields.Boolean('Use active domain')
-    # active_domain = fields.Text('Active domain', readonly=True)
 
     attachment_ids = fields.Many2many(
         'ir.attachment', 'mail_compose_message_statement_ir_attachments_rel',
         'wizard_id', 'attachment_id', 'Attachments')
 
-    # is_log = fields.Boolean('Log an Internal Note',
-    #                         help='Whether the message is an internal note (comment mode only)')
-    # subject = fields.Char(default=False)
-    # # mass mode options
-    # notify = fields.Boolean('Notify followers', help='Notify followers of the document (mass post only)')
-    # template_id = fields.Many2one(
-    #     'mail.template', 'Use template', index=True,
-    #     domain="[('model', '=', model)]")
 
-    # @api.multi
-    # def check_access_rule(self, operation):
-    #     """ Access rules of mail.compose.message:
-    #         - create: if
-    #             - model, no res_id, I create a message in mass mail mode
-    #         - then: fall back on mail.message acces rules
-    #     """
-    #     # Author condition (CREATE (mass_mail))
-    #     if operation == 'create' and self._uid != SUPERUSER_ID:
-    #         # read mail_compose_message.ids to have their values
-    #         message_values = {}
-    #         self._cr.execute('SELECT DISTINCT id, model, res_id FROM "%s" WHERE id = ANY (%%s) AND res_id = 0' % self._table, (self.ids,))
-    #         for mid, rmod, rid in self._cr.fetchall():
-    #             message_values[mid] = {'model': rmod, 'res_id': rid}
-    #         # remove from the set to check the ids that mail_compose_message accepts
-    #         author_ids = [mid for mid, message in message_values.iteritems()
-    #                       if message.get('model') and not message.get('res_id')]
-    #         self = self.browse(list(set(self.ids) - set(author_ids)))  # not sure slef = ...
-    #
-    #     return super(MailComposer, self).check_access_rule(operation)
 
     @api.multi
     def _notify(self, force_send=False, user_signature=True):
@@ -181,13 +143,14 @@ class MailComposer(models.TransientModel):
 
         data = {
             'date_end': self._context.get('date_end'),
-            # 'statement_type': self._context.get('statement_type'),
             'company_id': partner_id.company_id.id,
             'partner_ids': partner_id.ids,
-            # 'partner_to': partner_id.ids + self._context.get('recipient_partner_ids'),
             'show_aging_buckets': self._context.get('show_aging_buckets'),
             'filter_non_due_partners': False,
         }
+
+        if self._context.get('statement_type') == 'customer_activity_statement.statement':
+            data['date_start'] = self._context.get('date_start')
 
         pdf = self.env['report'].get_pdf(
                                             partner_id,
@@ -202,18 +165,10 @@ class MailComposer(models.TransientModel):
             'type': 'binary',
             'datas': base64.encodestring(pdf),
             'datas_fname': 'customer_statement.pdf',
-            # 'res_model': 'res.partner',
-            # 'res_id': partner_id.id,
             'mimetype': 'application/pdf'
         })
 
         result['attachment_ids'] = [attachment_id.id]
-
-        # result['partner_ids'] = partner_id.ids + [(4, id) for id in self._context.get('recipient_partner_ids')]
-        # result['partner_to'] = partner_id.ids + [(4, id) for id in self._context.get('recipient_partner_ids')]
-        #
-        # result['partner_ids'] = [(4, id) for id in self._context.get('recipient_partner_ids')]
-        # result['partner_to'] = [(4, id) for id in self._context.get('recipient_partner_ids')]
 
         return result
 
