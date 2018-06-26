@@ -101,14 +101,17 @@ class MailComposer(models.TransientModel):
     #             ('mass_post', 'Post on Multiple Documents')]
 
     # composition_mode = fields.Selection(selection=_get_composition_mode_selection, string='Composition mode', default='comment')
-    # partner_ids = fields.Many2many(
-    #     'res.partner', 'mail_compose_message_res_partner_rel',
-    #     'wizard_id', 'partner_id', 'Additional Contacts')
+    partner_ids = fields.Many2many(
+        'res.partner', 'mail_compose_message_statement_res_partner_rel',
+        'wizard_id', 'partner_id', 'Additional Contacts')
+
     # use_active_domain = fields.Boolean('Use active domain')
     # active_domain = fields.Text('Active domain', readonly=True)
-    # attachment_ids = fields.Many2many(
-    #     'ir.attachment', 'mail_compose_message_ir_attachments_rel',
-    #     'wizard_id', 'attachment_id', 'Attachments')
+
+    attachment_ids = fields.Many2many(
+        'ir.attachment', 'mail_compose_message_statement_ir_attachments_rel',
+        'wizard_id', 'attachment_id', 'Attachments')
+
     # is_log = fields.Boolean('Log an Internal Note',
     #                         help='Whether the message is an internal note (comment mode only)')
     # subject = fields.Char(default=False)

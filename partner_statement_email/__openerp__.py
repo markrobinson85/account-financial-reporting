@@ -19,6 +19,7 @@
         'views/res_partner.xml',
         'wizard/partner_send_statement_wizard.xml',
         'wizard/mail_compose_message_statement.xml',
+        'security/ir.model.access.csv',
     ],
     'installable': True,
     'application': False,
