@@ -11,17 +11,22 @@
             <field name="name">Customer Activity Statement - Send by Email</field>
             <field name="email_from">${(user.email and '%s &lt;%s&gt;' % (user.name, user.email) or '')|safe}</field>
             <field name="subject">Customer Statement from ${object.company_id.name}</field>
-            <field name="model_id" ref="model_res_partner"/>
+            <field name="model_id" ref="model_scheduler_partner_statement"/>
             <field name="auto_delete" eval="True"/>
             <field name="lang">${object.lang}</field>
             <field name="body_html"><![CDATA[
 <p>
-Dear ${object.name},
+${object.partner_id.name}:
 </p>
 
 <p>
-Attached is your statement.
+Attached is your statement showing an outstanding balance of ${object.company_currency_id.symbol}${object.partner_id.credit}.
 </p>
+
+<p>
+If you have any questions about an item on this statement, please contact us at ${object.company_id.phone}.
+</p>
+
 <p>
 Thank you,
 </p>
@@ -37,14 +42,20 @@ Thank you,
             <field name="name">Customer Outstanding Statement - Send by Email</field>
             <field name="email_from">${(user.email and '%s &lt;%s&gt;' % (user.name, user.email) or '')|safe}</field>
             <field name="subject">Customer Statement from ${object.company_id.name}</field>
-            <field name="model_id" ref="model_res_partner"/>
+            <field name="model_id" ref="model_scheduler_partner_statement"/>
             <field name="auto_delete" eval="True"/>
             <field name="lang">${object.lang}</field>
             <field name="body_html"><![CDATA[
-<p>Dear ${object.name},</p>
+<p>
+${object.partner_id.name}:
+</p>
 
 <p>
-Attached is your statement.
+Attached is your statement showing an outstanding balance of ${object.company_currency_id.symbol}${object.partner_id.credit}.
+</p>
+
+<p>
+If you have any questions about an item on this statement, please contact us at ${object.company_id.phone}.
 </p>
 
 <p>Thank you,</p>

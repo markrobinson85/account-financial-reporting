@@ -34,14 +34,11 @@ class ResPartner(models.Model):
         """ Open a window to compose an email
         """
         self.ensure_one()
-        # template = self.env.ref('account.email_template_edi_statement', False)
         statement_form = self.env.ref('partner_statement_email.partner_send_statement_wizard', False)
 
         ctx = dict(
             default_model='res.partner',
             default_res_id=self.id,
-            # default_use_template=bool(template),
-            # default_template_id=template and template.id or False,
             default_composition_mode='comment',
         )
         return {
@@ -61,19 +58,23 @@ class ResPartner(models.Model):
         message_id = self.env['mail.compose.message.statement'].create({
             'template_id': self._context.get('default_template_id')
         })
-        # TODO: insert updated values from template into message.
-        values = message_id.onchange_template_id(template_id=self._context.get('default_template_id'),
+
+        values = message_id.onchange_template_id(
+                                        template_id=self._context.get('default_template_id'),
                                         composition_mode=self._context.get('default_composition_mode'),
                                         model=self._context.get('default_model'),
                                         res_id=self._context.get('default_res_id'))
+
         message_id.write(values['value'])
         message_id.send_mail_action()
+
         return message_id
 
 
 class SchedulerCustomerStatement(models.Model):
     _name = "scheduler.partner.statement"
     _inherit = ['mail.thread']
+    _description = 'Partner Statement Subscription'
 
     name = fields.Char('Number',
                        readonly=True,
@@ -101,15 +102,16 @@ class SchedulerCustomerStatement(models.Model):
                                         default=False)
 
     date_last_sent = fields.Date('Last Sent',
-                                 track_visibility='onchange',
+                                 # track_visibility='onchange',
                                  readonly=True)
 
-    date_next_send = fields.Date('Next Date to Send',
-                                 track_visibility='onchange',)
+    date_next_send = fields.Date('Scheduled Send Date',
+                                 track_visibility='onchange',
+                                 help='Odoo will automatically send the '
+                                      'customer the statement on this date.')
 
     company_id = fields.Many2one(
         comodel_name='res.company',
-        # default=lambda self: self.env.user.company_id,
         string='Company'
     )
 
@@ -133,16 +135,16 @@ class SchedulerCustomerStatement(models.Model):
     @api.model
     def process_scheduler_queue(self):
         # Find schedulers that were last executed more than 30 days earlier.
-        schedulers = self.search([('date_last_sent', '>=', datetime.strftime(fields.datetime.now(), DEFAULT_SERVER_DATETIME_FORMAT))])
+        schedulers = self.search(['|', ('date_next_send', '<=', datetime.strftime(fields.datetime.now(), DEFAULT_SERVER_DATETIME_FORMAT)), ('date_next_send', '=', False)])
         today = date.today()
-        for schedule in schedulers:
-            if fields.Date.from_string(schedule.date_next_send) > today:
+        for schedule_id in schedulers:
+            if schedule_id.date_next_send is not False and fields.Date.from_string(schedule_id.date_next_send) > today:
                 continue
-            if schedule.dont_send_when_zero and schedule.partner_id.credit == 0:
-                schedule.set_thirty_days_later()
+            if schedule_id.dont_send_when_zero and schedule_id.partner_id.credit == 0:
+                schedule_id.set_thirty_days_later()
                 continue
 
-            if schedule.statement_type == 'customer_outstanding_statement.statement':
+            if schedule_id.statement_type == 'customer_outstanding_statement.statement':
                 template = self.env.ref('partner_statement_email.email_template_outstanding_statement', False)
             else:
                 template = self.env.ref('partner_statement_email.email_template_activity_statement', False)
@@ -151,23 +153,23 @@ class SchedulerCustomerStatement(models.Model):
             date_end = fields.Date.to_string(date.today())
 
             context = dict(
-                default_model='res.partner',
-                default_res_id=schedule.partner_id.commercial_partner_id.id,
+                default_model='scheduler.partner.statement',
+                default_res_id=schedule_id.id, #.partner_id.commercial_partner_id.id,
                 default_use_template=bool(template),
                 default_template_id=template and template.id or False,
                 default_composition_mode='comment',
-                default_statement_type=schedule.statement_type,
+                default_statement_type=schedule_id.statement_type,
                 date_start=date_start,
                 date_end=date_end,
-                default_partner_to=schedule.partner_id.commercial_partner_id.id,
-                recipient_partner_ids=schedule.recipient_ids.ids,
-                show_aging_buckets=schedule.show_aging_buckets,
-                statement_type=schedule.statement_type,
-                uid=schedule.user_id.id,
-                schedule_id=schedule.id
+                default_partner_to=schedule_id.partner_id.commercial_partner_id.id,
+                recipient_partner_ids=schedule_id.recipient_ids.ids,
+                show_aging_buckets=schedule_id.show_aging_buckets,
+                statement_type=schedule_id.statement_type,
+                uid=schedule_id.user_id.id,
+                schedule_id=schedule_id.id
             )
 
-            message_id = schedule.partner_id.sudo(schedule.user_id.id).with_context(context).statement_quick_send()
+            message_id = schedule_id.partner_id.sudo(schedule_id.user_id.id).with_context(context).statement_quick_send()
 
             # if message_id.id:
             #     schedule.date_last_sent = datetime.now()

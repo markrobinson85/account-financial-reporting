@@ -118,11 +118,10 @@ class MailComposer(models.TransientModel):
 
     @api.multi
     def send_mail_action(self):
-
         result = self.send_mail()
 
-        if self._context.get('schedule_id', False):
-            schedule_id = self.env['scheduler.partner.statement'].browse(self._context.get('schedule_id'))
+        if self.model == 'scheduler.partner.statement':
+            schedule_id = self.env[self.model].browse(self.res_id)
             schedule_id.date_last_sent = date.today()
             if self._context.get('first_compose', False) is False or schedule_id.date_next_send is False or (self._context.get('first_compose', False) and fields.Date.from_string(schedule_id.date_next_send) == date.today()):
                 schedule_id.set_thirty_days_later()
@@ -134,7 +133,7 @@ class MailComposer(models.TransientModel):
         if self._context.get('schedule_id', False):
             schedule_id = self.env['scheduler.partner.statement'].browse(self._context.get('schedule_id'))
             if schedule_id.date_last_sent == False:
-                schedule_id.unlink()
+                schedule_id.sudo().unlink()
 
         return {'type': 'ir.actions.act_window_close'}
 
@@ -167,14 +166,14 @@ class MailComposer(models.TransientModel):
             subject = "%s %s" % (re_prefix, subject)
         result['subject'] = subject
 
-        partner_id = self.env[self._context.get('default_model')].browse(self._context.get('default_res_id'))
+        schedule_id = self.env[self._context.get('default_model')].browse(self._context.get('default_res_id'))
 
         data = {
             'date_end': self._context.get('date_end'),
             'date_start': self._context.get('date_start'),
-            'company_id': partner_id.company_id.id,
-            'partner_ids': partner_id.ids,
-            'show_aging_buckets': self._context.get('show_aging_buckets'),
+            'company_id': schedule_id.partner_id.company_id.id,
+            'partner_ids':schedule_id.partner_id.ids,
+            'show_aging_buckets': schedule_id.show_aging_buckets,
             'filter_non_due_partners': False,
         }
 
@@ -182,7 +181,7 @@ class MailComposer(models.TransientModel):
             data['date_start'] = self._context.get('date_start')
 
         pdf = self.env['report'].get_pdf(
-                                            partner_id,
+                                            schedule_id.partner_id,
                                             self._context.get('statement_type'),
                                             # html=html,
                                             data=data,
@@ -190,10 +189,10 @@ class MailComposer(models.TransientModel):
                                         )
 
         attachment_id = self.env['ir.attachment'].create({
-            'name': 'Customer Statement',
+            'name': 'Customer Statement - ' + str(date.today()) + '.pdf',
             'type': 'binary',
             'datas': base64.encodestring(pdf),
-            'datas_fname': 'customer_statement.pdf',
+            'datas_fname': 'Customer Statement - ' + str(date.today()) + '.pdf',
             'mimetype': 'application/pdf'
         })
 
