@@ -20,15 +20,6 @@ _logger = logging.getLogger(__name__)
 class ResPartner(models.Model):
     _inherit = "res.partner"
 
-    # @api.multi
-    # def payslip_quicksend(self):
-    #     payslip_ids = self.filtered(lambda l: l.employee_id.address_home_id.email is not False)
-    #     if len(payslip_ids) == 0:
-    #         raise UserError('The employee does not have an e-mail address on file.')
-    #     for payslip in payslip_ids:
-    #         mail_template = self.env.ref('payroll_base.email_template_payslip', False)
-    #         mail_template.with_context(active_model='hr.payslip', active_ids=[payslip.id]).send_mail(payslip.id, force_send=True)
-
     @api.multi
     def action_partner_statement_send(self):
         """ Open a window to compose an email
@@ -169,10 +160,5 @@ class SchedulerCustomerStatement(models.Model):
                 schedule_id=schedule_id.id
             )
 
-            message_id = schedule_id.partner_id.sudo(schedule_id.user_id.id).with_context(context).statement_quick_send()
+            schedule_id.partner_id.sudo(schedule_id.user_id.id).with_context(context).statement_quick_send()
 
-            # if message_id.id:
-            #     schedule.date_last_sent = datetime.now()
-            #     schedule.date_next_send = datetime.now() + timedelta(days=30)
-
-            continue
