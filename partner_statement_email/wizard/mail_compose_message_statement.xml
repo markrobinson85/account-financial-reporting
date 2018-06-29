@@ -66,7 +66,7 @@
                     </group>
                     <footer>
                         <button string="Send" name="send_mail_action" type="object" class="btn-primary"/>
-                        <button string="Cancel" class="btn-default" special="cancel" />
+                        <button name="cancel_action" string="Cancel" type="object" class="btn-default" />
 
                         <button icon="fa-lg fa-save" type="object" name="save_as_template" string="Save as new template"
                                 class="pull-right btn-default" help="Save as a new template"/>

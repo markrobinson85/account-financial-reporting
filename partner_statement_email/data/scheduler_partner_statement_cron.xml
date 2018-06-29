@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<openerp>
+    <data noupdate="1">
+        <record id="ir_cron_scheduler_partner_statement_action" model="ir.cron">
+            <field name="name">Partner Statement Scheduler</field>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="interval_number">1</field>
+            <field name="interval_type">work_days</field>
+            <field name="numbercall">-1</field>
+            <field eval="False" name="doall"/>
+            <field eval="'scheduler.partner.statement'" name="model"/>
+            <field eval="'process_scheduler_queue'" name="function"/>
+            <field name="args">()</field>
+        </record>
+   </data>
+</openerp>

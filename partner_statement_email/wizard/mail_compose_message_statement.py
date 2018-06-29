@@ -3,8 +3,12 @@
 import base64
 import re
 
+from datetime import date, datetime, timedelta
+from dateutil.relativedelta import relativedelta
+
 from openerp import _, api, fields, models, SUPERUSER_ID
 from openerp import tools
+from openerp.tools import DEFAULT_SERVER_DATETIME_FORMAT
 from openerp.tools.safe_eval import safe_eval as eval
 
 
@@ -102,13 +106,37 @@ class MailComposer(models.TransientModel):
         'ir.attachment', 'mail_compose_message_statement_ir_attachments_rel',
         'wizard_id', 'attachment_id', 'Attachments')
 
-
+    # schedule_id = fields.Many2many(
+    #     'ir.attachment', 'mail_compose_message_statement_scheduler_rel',
+    #     'wizard_id', 'attachment_id', 'Attachments')
 
     @api.multi
     def _notify(self, force_send=False, user_signature=True):
         """ Override specific notify method of mail.message, because we do
             not want that feature in the wizard. """
         return
+
+    @api.multi
+    def send_mail_action(self):
+
+        result = self.send_mail()
+
+        if self._context.get('schedule_id', False):
+            schedule_id = self.env['scheduler.partner.statement'].browse(self._context.get('schedule_id'))
+            schedule_id.date_last_sent = date.today()
+            if self._context.get('first_compose', False) is False or schedule_id.date_next_send is False or (self._context.get('first_compose', False) and fields.Date.from_string(schedule_id.date_next_send) == date.today()):
+                schedule_id.set_thirty_days_later()
+
+        return result
+
+    @api.multi
+    def cancel_action(self):
+        if self._context.get('schedule_id', False):
+            schedule_id = self.env['scheduler.partner.statement'].browse(self._context.get('schedule_id'))
+            if schedule_id.date_last_sent == False:
+                schedule_id.unlink()
+
+        return {'type': 'ir.actions.act_window_close'}
 
     @api.model
     def get_record_data(self, values):
@@ -143,6 +171,7 @@ class MailComposer(models.TransientModel):
 
         data = {
             'date_end': self._context.get('date_end'),
+            'date_start': self._context.get('date_start'),
             'company_id': partner_id.company_id.id,
             'partner_ids': partner_id.ids,
             'show_aging_buckets': self._context.get('show_aging_buckets'),
@@ -228,6 +257,8 @@ class MailComposer(models.TransientModel):
         for res_id in res_ids:
             if result[res_id].get('partner_ids', False):
                 result[res_id]['partner_ids'] += self._context.get('recipient_partner_ids')
+            else:
+                result[res_id]['partner_ids'] = self._context.get('recipient_partner_ids')
 
         return result
 

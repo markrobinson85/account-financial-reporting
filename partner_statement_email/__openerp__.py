@@ -16,10 +16,13 @@
     ],
     'data': [
         'data/res_partner_statement_mail.xml',
+        'data/scheduler_partner_statement.xml',
+        'data/scheduler_partner_statement_cron.xml',
         'views/res_partner.xml',
         'wizard/partner_send_statement_wizard.xml',
         'wizard/mail_compose_message_statement.xml',
         'security/ir.model.access.csv',
+        'views/scheduler_partner_statement.xml',
     ],
     'installable': True,
     'application': False,

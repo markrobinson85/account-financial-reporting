@@ -44,6 +44,22 @@ class CustomerOutstandingStatementWizard(models.TransientModel):
                                       'Statement Type',
                                       default='customer_outstanding_statement.statement')
 
+    subscription = fields.Boolean('Subscribe', help='Subscribe the customer to monthly e-mails')
+
+    date_next_send = fields.Date('Next Date to Send', help='Select the date you want the next e-mail to send. \n\n'
+                                                           'If you select Compose E-mail, the e-mail will send today, '
+                                                           'and an e-mail will be scheduled for the next date selected. \n '
+                                                           'If you select Schedule E-mail, no e-mail will be sent until '
+                                                           'the scheduled date.')
+
+    company_currency_id = fields.Many2one('res.currency', related='company_id.currency_id', readonly=True)
+
+    credit = fields.Monetary(string='Total Receivable', help="Total amount this customer owes you.",
+                            currency_field='company_currency_id',
+                            related='partner_id.credit',
+                             )
+    dont_send_when_zero = fields.Boolean('Skip sending when zero balance', default=True)
+
     @api.model
     def default_get(self, fields):
         """ Handle composition mode. Some details about context keys:
@@ -64,12 +80,35 @@ class CustomerOutstandingStatementWizard(models.TransientModel):
         partner_id = self.env['res.partner'].browse(self._context.get('active_id'))
 
         if partner_id.commercial_partner_id.id != partner_id.id:
-            result['recipient_partner_ids'] = [partner_id.id]
+            result['recipient_partner_ids'] = [partner_id.commercial_partner_id.id, partner_id.id]
             result['partner_id'] = partner_id.commercial_partner_id.id
         else:
+            result['recipient_partner_ids'] = [partner_id.commercial_partner_id.id]
             result['partner_id'] = partner_id.commercial_partner_id.id
 
         return result
+
+    @api.multi
+    def action_schedule_message(self):
+        """ Open a window to compose an email
+        """
+
+        self.ensure_one()
+
+        if self.subscription:
+            schedule_id = self.env['scheduler.partner.statement'].create({
+                'partner_id': self.partner_id.commercial_partner_id.id,
+                'recipient_ids': [(6, 0, self.recipient_partner_ids.ids)],
+                'statement_type': self.statement_type,
+                'date_next_send': self.date_next_send or date.today(),
+                'show_aging_buckets': self.show_aging_buckets,
+                'company_id': self.partner_id.company_id.id,
+                'user_id': self.env.user.id,
+                'active': True,
+                'dont_send_when_zero': self.dont_send_when_zero,
+            })
+
+        return {'type': 'ir.actions.act_window_close'}
 
     @api.multi
     def action_compose_mail(self):
@@ -84,6 +123,37 @@ class CustomerOutstandingStatementWizard(models.TransientModel):
             template = self.env.ref('partner_statement_email.email_template_activity_statement', False)
 
         compose_form = self.env.ref('partner_statement_email.email_compose_message_statement_wizard_form', False)
+
+        schedule_id = self.env['scheduler.partner.statement']
+
+        if self.subscription:
+            schedule_id = schedule_id.search([('partner_id', '=', self.partner_id.commercial_partner_id.id)])
+
+            if schedule_id.id:
+                schedule_id.write({
+                    'partner_id': self.partner_id.commercial_partner_id.id,
+                    'recipient_ids': [(6, 0, self.recipient_partner_ids.ids)],
+                    'statement_type': self.statement_type,
+                    'date_next_send': self.date_next_send,
+                    'show_aging_buckets': self.show_aging_buckets,
+                    'company_id': self.partner_id.company_id.id,
+                    'user_id': self.env.user.id,
+                    'active': True,
+                    'dont_send_when_zero': self.dont_send_when_zero,
+                })
+            else:
+                schedule_id = schedule_id.create({
+                    'partner_id': self.partner_id.commercial_partner_id.id,
+                    'recipient_ids': [(6, 0, self.recipient_partner_ids.ids)],
+                    'statement_type': self.statement_type,
+                    'date_next_send': self.date_next_send,
+                    'show_aging_buckets': self.show_aging_buckets,
+                    'company_id': self.partner_id.company_id.id,
+                    'user_id': self.env.user.id,
+                    'active': True,
+                    'dont_send_when_zero': self.dont_send_when_zero,
+                })
+
         ctx = dict(
             default_model='res.partner',
             default_res_id=self.partner_id.commercial_partner_id.id,
@@ -97,7 +167,9 @@ class CustomerOutstandingStatementWizard(models.TransientModel):
             recipient_partner_ids=self.recipient_partner_ids.ids,
             show_aging_buckets=self.show_aging_buckets,
             statement_type=self.statement_type,
-            mark_invoice_as_sent=True,
+            dont_send_when_zero=self.dont_send_when_zero,
+            schedule_id=schedule_id.id,
+            first_compose=True
         )
 
         return {
