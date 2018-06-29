@@ -35,7 +35,7 @@ class CustomerOutstandingStatementWizard(models.TransientModel):
         'wizard_id', 'partner_id', 'Recipients')
 
     show_aging_buckets = fields.Boolean(string='Include Aging Buckets',
-                                        default=False)
+                                        default=True)
 
     partner_id = fields.Many2one('res.partner', 'Partner Account')
 
