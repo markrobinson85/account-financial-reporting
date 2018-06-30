@@ -8,7 +8,7 @@
     'version': '9.0.1.0.0',
     'category': 'Accounting & Finance',
     'summary': 'OCA Financial Reports',
-    'author': "Eficent, Odoo Community Association (OCA)",
+    'author': "Mark Robinson, Canzonia Software Ltd.",
     'website': 'https://github.com/OCA/account-financial-reporting',
     'license': 'AGPL-3',
     'depends': [
