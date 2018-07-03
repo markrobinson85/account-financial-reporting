@@ -72,7 +72,7 @@ class SchedulerCustomerStatement(models.Model):
                        default=lambda self: self.env['ir.sequence'].next_by_code(
                            'scheduler.partner.statement'))
 
-    partner_id = fields.Many2one('res.partner', 'Partner Account', track_visibility='onchange',)
+    partner_id = fields.Many2one('res.partner', 'Partner Account', track_visibility='onchange', readonly=True)
 
     recipient_ids = fields.Many2many(
         'res.partner', 'scheduler_partner_statement_res_partner_rel',
