@@ -21,7 +21,7 @@
                                 <!-- Display account header -->
                                 <div class="act_as_table list_table" style="margin-top: 10px;"/>
                                 <div class="act_as_caption account_title" style="width: 1141px !important;">
-                                    <span t-field="account.code"/> - <span t-field="account.name"/>
+                                    <span t-field="account.code"/> - <span t-field="account.name"/> - <span t-field="account.currency_id.name"/>
                                 </div>
 
                                 <!-- Display account lines -->
