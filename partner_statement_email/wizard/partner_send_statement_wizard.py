@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
-# Copyright 2017 Eficent Business and IT Consulting Services S.L.
-#   (http://www.eficent.com)
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
+import base64
 from datetime import date, timedelta
 from openerp import api, fields, models, _
 
@@ -133,47 +132,82 @@ class CustomerOutstandingStatementWizard(models.TransientModel):
 
     @api.multi
     def action_compose_mail(self):
-        """ Open a window to compose an email
-        """
-
+        '''
+        This function opens a window to compose an email, with the statement template loaded by default
+        '''
         self.ensure_one()
 
         if self.statement_type == 'customer_outstanding_statement.statement':
-            template = self.env.ref('partner_statement_email.email_template_outstanding_statement', False)
+            template_id = self.env.ref('partner_statement_email.email_template_outstanding_statement', False)
         else:
-            template = self.env.ref('partner_statement_email.email_template_activity_statement', False)
+            template_id = self.env.ref('partner_statement_email.email_template_activity_statement', False)
 
-        compose_form = self.env.ref('partner_statement_email.email_compose_message_statement_wizard_form', False)
+        try:
+            compose_form_id = self.env.ref('mail.email_compose_message_wizard_form', False)
+        except ValueError:
+            compose_form_id = False
 
         schedule_id = self._create_or_update()
+
+        data = {
+            'date_end': self.date_end,
+            'date_start': self.date_start,
+            'company_id': self.partner_id.company_id.id,
+            'partner_ids': self.partner_id.ids,
+            'show_aging_buckets': self.show_aging_buckets,
+            'filter_non_due_partners': False,
+        }
+
+        pdf = self.env['report'].get_pdf(
+            schedule_id.partner_id,
+            schedule_id.statement_type,
+            data=data,
+        )
+
+        attachment_id = self.env['ir.attachment'].create({
+            'name': 'Customer Statement - ' + str(date.today()) + '.pdf',
+            'type': 'binary',
+            'datas': base64.encodestring(pdf),
+            'datas_fname': 'Customer Statement - ' + str(date.today()) + '.pdf',
+            'mimetype': 'application/pdf'
+        })
 
         ctx = dict(
             default_model='scheduler.partner.statement',
             default_res_id=schedule_id.id,
-            default_use_template=bool(template),
-            default_template_id=template and template.id or False,
+            default_use_template=bool(template_id),
+            default_template_id=template_id and template_id.id or False,
             default_composition_mode='comment',
-            default_statement_type=self.statement_type,
-            date_start=self.date_start,
-            default_partner_to=self.partner_id.commercial_partner_id.id,
-            date_end=self.date_end,
-            recipient_partner_ids=self.recipient_partner_ids.ids,
-            show_aging_buckets=self.show_aging_buckets,
-            statement_type=self.statement_type,
-            dont_send_when_zero=self.dont_send_when_zero,
-            # schedule_id=schedule_id.id,
-            first_compose=True
+            default_attachment_ids=attachment_id.ids,
+            default_partner_ids=self.recipient_partner_ids.ids,
+
         )
+
+        if self.subscription:
+            schedule_id = self.env['scheduler.partner.statement'].search([('partner_id', '=', self.partner_id.id)])
+            if schedule_id.id:
+                schedule_id.date_last_sent = date.today()
+                schedule_id.set_thirty_days_later()
 
         return {
             'name': _('Compose Email'),
             'type': 'ir.actions.act_window',
             'view_type': 'form',
             'view_mode': 'form',
-            'res_model': 'mail.compose.message.statement',
-            'views': [(compose_form.id, 'form')],
-            'view_id': compose_form.id,
+            'res_model': 'mail.compose.message',
+            'views': [(compose_form_id.id, 'form')],
+            'view_id': compose_form_id.id,
             'target': 'new',
             'context': ctx,
         }
 
+        # return {
+        #     'type': 'ir.actions.act_window',
+        #     'view_type': 'form',
+        #     'view_mode': 'form',
+        #     'res_model': 'mail.compose.message',
+        #     'views': [(compose_form_id.id, 'form')],
+        #     'view_id': compose_form_id.id,
+        #     'target': 'new',
+        #     'context': ctx,
+        # }

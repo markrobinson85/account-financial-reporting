@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import base64
 import json
 from lxml import etree
 from datetime import date, datetime, timedelta
@@ -46,18 +47,55 @@ class ResPartner(models.Model):
 
     @api.one
     def statement_quick_send(self, context=False):
-        message_id = self.env['mail.compose.message.statement'].create({
+        message_id = self.env['mail.compose.message'].create({
             'template_id': self._context.get('default_template_id')
         })
+
+        schedule_id = self.env['scheduler.partner.statement'].browse(self._context.get('schedule_id'))
 
         values = message_id.onchange_template_id(
                                         template_id=self._context.get('default_template_id'),
                                         composition_mode=self._context.get('default_composition_mode'),
                                         model=self._context.get('default_model'),
-                                        res_id=self._context.get('default_res_id'))
+                                        res_id=self._context.get('default_res_id'),
+                                        )
+
+        date_start = fields.Date.to_string(date.today() - timedelta(days=120))
+        date_end = fields.Date.to_string(date.today())
+
+        data = {
+            'date_end': date_end,
+            'date_start': date_start,
+            'company_id': schedule_id.partner_id.company_id.id,
+            'partner_ids': schedule_id.partner_id.ids,
+            'show_aging_buckets': schedule_id.show_aging_buckets,
+            'filter_non_due_partners': False,
+        }
+
+        pdf = self.env['report'].get_pdf(
+            schedule_id.partner_id,
+            schedule_id.statement_type,
+            data=data,
+        )
+
+        attachment_id = self.env['ir.attachment'].create({
+            'name': 'Customer Statement - ' + str(date.today()) + '.pdf',
+            'type': 'binary',
+            'datas': base64.encodestring(pdf),
+            'datas_fname': 'Customer Statement - ' + str(date.today()) + '.pdf',
+            'mimetype': 'application/pdf'
+        })
 
         message_id.write(values['value'])
+        message_id.write({
+            'attachment_ids': [(6, 0, attachment_id.ids)],
+            'partner_ids': [(6, 0, schedule_id.recipient_ids.ids)],
+        })
+
         message_id.send_mail_action()
+
+        schedule_id.date_last_sent = date.today()
+        schedule_id.set_thirty_days_later()
 
         return message_id
 
