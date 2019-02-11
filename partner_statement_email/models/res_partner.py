@@ -139,6 +139,8 @@ class SchedulerCustomerStatement(models.Model):
                                  help='Odoo will automatically send the '
                                       'customer the statement on this date.')
 
+    send_first_of_month = fields.Boolean("Send on first of month")
+
     company_id = fields.Many2one(
         comodel_name='res.company',
         string='Company'
@@ -155,11 +157,14 @@ class SchedulerCustomerStatement(models.Model):
     @api.multi
     def set_thirty_days_later(self):
         for schedule_id in self:
-            thirty_days_later = date.today() + relativedelta(months=+1)
-            if thirty_days_later.weekday() in [5, 6]:
-                schedule_id.date_next_send = fields.Date.to_string(thirty_days_later + relativedelta(weekday=0))
+            if schedule_id.send_first_of_month:
+                schedule_id.date_next_send = fields.Date.to_string(fields.Date.from_string(self.date_last_sent) + relativedelta(months=+1, day=1))
             else:
-                schedule_id.date_next_send = fields.Date.to_string(thirty_days_later)
+                thirty_days_later = fields.Date.from_string(self.date_last_sent) + relativedelta(months=+1)
+                if thirty_days_later.weekday() in [5, 6]:
+                    schedule_id.date_next_send = fields.Date.to_string(thirty_days_later + relativedelta(weekday=0))
+                else:
+                    schedule_id.date_next_send = fields.Date.to_string(thirty_days_later)
 
     @api.model
     def process_scheduler_queue(self):

@@ -51,6 +51,8 @@ class CustomerOutstandingStatementWizard(models.TransientModel):
                                                            'If you select Schedule E-mail, no e-mail will be sent until '
                                                            'the scheduled date.')
 
+    send_first_of_month = fields.Boolean("Send on first of month")
+
     company_currency_id = fields.Many2one('res.currency', related='company_id.currency_id', readonly=True)
 
     credit = fields.Monetary(string='Total Receivable', help="Total amount this customer owes you.",
@@ -104,6 +106,7 @@ class CustomerOutstandingStatementWizard(models.TransientModel):
                 'user_id': self.env.user.id,
                 'active': self.subscription,
                 'dont_send_when_zero': self.dont_send_when_zero,
+                'send_first_of_month': self.send_first_of_month,
             })
         else:
             schedule_id = schedule_id.create({
@@ -116,6 +119,7 @@ class CustomerOutstandingStatementWizard(models.TransientModel):
                 'user_id': self.env.user.id,
                 'active': self.subscription,
                 'dont_send_when_zero': self.dont_send_when_zero,
+                'send_first_of_month': self.send_first_of_month,
             })
         return schedule_id
 

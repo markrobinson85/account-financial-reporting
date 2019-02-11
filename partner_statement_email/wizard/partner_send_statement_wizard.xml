@@ -36,6 +36,7 @@
                             <field name="subscription" widget="checkbox"/>
                         </group>
                         <group>
+                            <field name="send_first_of_month" />
                             <field name="date_next_send" attrs="{'invisible': [('subscription', '=', False)]}" />
                             <field name="dont_send_when_zero" widget="checkbox" attrs="{'invisible': [('subscription', '=', False)]}" />
                         </group>
