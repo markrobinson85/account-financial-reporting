@@ -3,6 +3,7 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
 from odoo import api, models
+from odoo.tools import float_is_zero
 
 
 class OutstandingStatement(models.AbstractModel):
@@ -98,8 +99,7 @@ class OutstandingStatement(models.AbstractModel):
                                    date_end, account_type):
         res = dict(map(lambda x: (x, []), partner_ids))
         partners = tuple(partner_ids)
-        # pylint: disable=E8103
-        self.env.cr.execute("""
+        query = """
         WITH Q1 as (%s),
              Q2 AS (%s),
              Q3 AS (%s)
@@ -109,8 +109,14 @@ class OutstandingStatement(models.AbstractModel):
         ORDER BY date, date_maturity, move_id""" % (
             self._display_lines_sql_q1(partners, date_end, account_type),
             self._display_lines_sql_q2(),
-            self._display_lines_sql_q3(company_id)))
+            self._display_lines_sql_q3(company_id))
+        # pylint: disable=E8103
+        self.env.cr.execute(query)
         for row in self.env.cr.dictfetchall():
+            # Check if the open amount is zero or within rounding.
+            if float_is_zero(row['open_amount'], precision_rounding=self.env['res.currency'].browse(row['currency_id']).rounding):
+                row.pop('partner_id')
+                continue
             res[row.pop('partner_id')].append(row)
         return res
 
